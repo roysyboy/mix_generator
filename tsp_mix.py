@@ -1,4 +1,3 @@
-import sys
 import numpy as np
 import operator
 from numpy.core.fromnumeric import shape
@@ -33,6 +32,7 @@ class Tree:
             self.branches.remove(branch)
 
 
+# prints tree structure with song title and artist
 def print_tree(trees, nodes) -> None:
     index_nodes = {nd.index : nd for nd in nodes}
     for tree in trees.values():
@@ -41,6 +41,7 @@ def print_tree(trees, nodes) -> None:
             print(" ㄴ-- {}. {}  -  {}".format(branch.index, index_nodes[branch.index].name, index_nodes[branch.index].artist))
 
 
+# gets list of nodes
 def get_node_list(usr, client_id, client_secret) -> list:
     features, names = get_song_features(usr, client_id, client_secret)
     node_lst = []
@@ -52,6 +53,7 @@ def get_node_list(usr, client_id, client_secret) -> list:
     return node_lst
 
 
+# applies weight onto the array
 def apply_weight(arr):
     val_arr = np.tile(np.array(FEATURE_WEIGHTS), (arr.shape[0], 1))
     return arr * val_arr
@@ -67,11 +69,15 @@ def make_dist_matrix(nodes) -> np.ndarray:
         res = np.sum(res_arr, axis=1)
         dist_mtx.append(res)
     
+    sz = len(dist_mtx)
+    for i in range(sz):
+        dist_mtx[i][i] = float('inf')
+
     return np.array(dist_mtx)
 
 
-def make_min_span_tree(nodes, dist_mtx) -> list:
-    ## TODO: Use Prim algorithm to come up with minimum spanning tree
+# implements prim's algorithm to create minimum spanning tree
+def make_min_span_tree(nodes, dist_mtx) -> dict:
     copy_mtx = np.copy(dist_mtx)
     index_nodes = {nd.index : nd for nd in nodes}
     nodes_undone = list(range(len(nodes)))
@@ -79,7 +85,7 @@ def make_min_span_tree(nodes, dist_mtx) -> list:
     nodes_undone = set(nodes_undone)
     nodes_done = set([init_node])
     copy_mtx[:, init_node] = np.full(copy_mtx.shape[0], float('inf')).T
-    
+
     span_tree = {}
     while nodes_undone:
         min_val = float('inf')
@@ -88,8 +94,8 @@ def make_min_span_tree(nodes, dist_mtx) -> list:
         # find the minimum branch to take from the current tree
         for cur_index in nodes_done:
             cur_dist_arr = copy_mtx[cur_index]
-            if cur_dist_arr[cur_index] == 0:
-                cur_dist_arr[cur_index] = float('inf')
+            # if cur_dist_arr[cur_index] == 0:
+            #     cur_dist_arr[cur_index] = float('inf')
             
             min_index = np.argmin(cur_dist_arr)
             if cur_dist_arr[min_index] < min_val:
@@ -114,12 +120,52 @@ def make_min_span_tree(nodes, dist_mtx) -> list:
         nodes_undone.remove(end_node.index)
         nodes_done.add(end_node.index)
     
-    print(nodes_undone)
     return span_tree
 
 
+def perfect_match(trees, odd_mtx) -> np.ndarray:
+    tree_remains = set(trees)
+    pairs = []
+    print(odd_mtx[13][27])
+    # print(min(odd_mtx))
+    '''
+    while tree_remains:
+        cur_ind = np.unravel_index(np.argmin(odd_mtx, axis=None), odd_mtx.shape)
+        odd_mtx[cur_ind[0]] = np.full(odd_mtx.shape[0], float('inf'))
+        odd_mtx[:, cur_ind[0]] = np.full(odd_mtx.shape[0], float('inf')).T
+        odd_mtx[cur_ind[1]] = np.full(odd_mtx.shape[0], float('inf'))
+        odd_mtx[:, cur_ind[1]] = np.full(odd_mtx.shape[0], float('inf')).T
+        print(odd_mtx[cur_ind])
+        print(odd_mtx[:, cur_ind])
+        tree_remains.remove(cur_ind[0])
+        tree_remains.remove(cur_ind[1])
+    '''
+    
+    return pairs
+
+
+def match_odd_pairs(span_tree, dist_mtx) -> np.ndarray:
+    odd_tree = []
+    # odd_mtx = dist_mtx.copy()
+    odd_mtx = {}
+    for i in range(dist_mtx.shape[0]):
+        tree = span_tree[i]
+        if len(tree.branches) % 2 == 1:
+            odd_tree.append(tree.index)
+    
+    for i in odd_tree:
+        odd_mtx[i] = {j : dist_mtx[i][j] for j in odd_tree}
+
+    matched_pairs = perfect_match(odd_tree, odd_mtx)
+
+    return matched_pairs
+
+
+# implements christofides algorithm using given spanning tree to create appriximate solution
 def tsp_chris(span_tree, dist_mtx) -> list:
     ## TODO: Use christofides algorithm based on the spanning tree
+    euler_tree = match_odd_pairs(span_tree, dist_mtx)
+
     return span_tree
 
 
@@ -127,10 +173,10 @@ def generate_mix(usr, client_id, client_secret) -> list:
     nodes = get_node_list(usr, client_id, client_secret)
     dist_mtx = make_dist_matrix(nodes)
     span_tree = make_min_span_tree(nodes, dist_mtx)
-    # result = tsp_chris(span_tree, dist_mtx)
+    result = tsp_chris(span_tree, dist_mtx)
     # return result
-    print_tree(span_tree, nodes)
-    return None
+    # print_tree(span_tree, nodes)
+    return []
 
 
 def main() -> None:
