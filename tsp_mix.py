@@ -18,6 +18,7 @@ FEATURE_WEIGHTS = {'danceability' : 4 ,
                     }
 FEAT_KEYS_SZ = len(FEATURE_WEIGHTS)
 
+# Node is a song/track represents as a node used to create distance matrix between each node
 class Node:
     def __init__(self, index, uri, name, artist, val_lst=[]) -> None:
         self.index = index
@@ -26,6 +27,7 @@ class Node:
         self.artist = artist
         self.vals = val_lst
 
+# Tree represents a node from the tree structure used to generate minimum spanning tree
 class Tree:
     def __init__(self, index):
         self.index = index
@@ -168,7 +170,6 @@ def match_odd_pairs(span_tree, dist_mtx) -> list:
     for i in range(sz):
         mtx_to_tree_ind[i] = odd_tree[i]
 
-    # TODO: get rid of pairs that are already linked together
     tree_branches = {ind : set([b.index for b in tree.branches]) for ind, tree in span_tree.items()}
     matched_pairs = minimum_match(tree_branches, odd_tree, odd_mtx, mtx_to_tree_ind)
 
@@ -240,6 +241,8 @@ def tsp_chris(span_tree, dist_mtx) -> list:
 
     result = []
     visited = set([])
+    
+    # remove duplicates from the euler path
     for n in euler_path:
         if n not in visited:
             visited.add(n)
@@ -252,22 +255,39 @@ def tsp_chris(span_tree, dist_mtx) -> list:
 def path_to_uri(nodes, tsp_path) -> list:
     node_dict = {node.index : node.uri for node in nodes}
     uri_list = [node_dict[ind] for ind in tsp_path]
+
     return uri_list
 
 
-# build given list of indices into list of track names and artists
+# build given list of indices into list of track's names and each of its artists
 def path_to_name_artist(nodes, tsp_path) -> list:
     node_dict = {node.index : node.name + "  - " + node.artist for node in nodes}
     name_artist_list = [node_dict[ind] for ind in tsp_path]
+
     return name_artist_list
 
 
+# print out each track from the given list of tracks and artists
+def print_playlist(name_artist_list) -> None:
+    for i, track in enumerate(name_artist_list):
+        print("{}. {}".format(i + 1, track))
+
+
+### MAIN ###
 # build a mix for given playlist of given user
 def generate_mix(usr, playlist_no, client_id, client_secret) -> list:
+    
+    # get playlist as a list of nodes and generate distance matrix between each node
     nodes, playlist_name = get_node_list(usr, playlist_no, client_id, client_secret)
     dist_mtx = make_dist_matrix(nodes)
+
+    # creates minimum spanning tree (MST)
     span_tree = make_min_span_tree(nodes, dist_mtx)
+
+    # uses christofides algorithm for the given MST
     tsp_path = tsp_chris(span_tree, dist_mtx)
+
+    # creates the new playlist to the user's profile
     uri_list = path_to_uri(nodes, tsp_path)
     uri_to_playlist(uri_list, usr, playlist_name)
     name_artist_list = path_to_name_artist(nodes, tsp_path)
@@ -280,7 +300,8 @@ def main() -> None:
     pl_no = ('Please enter number of your playlist: ')
     client_id = input('Enter client id: ')
     client_secret = input('Enter client secret passcode: ')
-    print(generate_mix(usr, pl_no, client_id, client_secret))
+    name_artist_list = generate_mix(usr, pl_no, client_id, client_secret)
+    print_playlist(name_artist_list)
 
 
 if __name__ == "__main__":

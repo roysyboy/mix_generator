@@ -3,12 +3,13 @@ from spotipy.oauth2 import SpotifyOAuth
 from spotipy.oauth2 import SpotifyClientCredentials
 import urllib3
 
-# global variable
+# global variables
 global sp, token
 sp = None
 token = None
 
 
+# return a single string of each artist in artists separated by comma
 def get_artists(artists) -> str:
     sz = len(artists)
     if sz < 1:
@@ -19,6 +20,8 @@ def get_artists(artists) -> str:
 
     return result
 
+
+# print out ecah track from given spotify playlist
 def print_playlists(playlists) -> None:
     for i, playlist in enumerate(playlists['items']):
         print('{}:'.format(i))
@@ -26,7 +29,7 @@ def print_playlists(playlists) -> None:
         print("    " + playlist['uri'])
 
 
-# authenticate spotipy api
+# authenticate spotify's web api
 def auth_spotify(usr, client_id, client_secret) -> spotipy.Spotify:
     global sp, token
     # client_credentials_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
@@ -48,11 +51,7 @@ def get_song_features(usr, playlist_no, client_id, client_secret) -> tuple:
 
     # Get a single playlist
     cur_playlist_uris = playlists['items'][playlist_no]['uri']
-    # for i in range(len(playlists['items'])):
-    #     print(playlists['items'][i]['name'])
-
     playlist_name = playlists['items'][playlist_no]['name']
-
     cur_playlist_raw = sp.playlist(cur_playlist_uris)
 
     cur_pl = cur_playlist_raw['tracks']['items']
@@ -67,6 +66,7 @@ def get_song_features(usr, playlist_no, client_id, client_secret) -> tuple:
     return features, song_name_lst, playlist_name
 
 
+# convert given list of uri's into a spotify playlist with given playlist name
 def uri_to_playlist(uri_list, usr, playlist_name) -> None:
     global sp
     if sp is not None:
