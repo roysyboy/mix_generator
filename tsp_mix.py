@@ -1,20 +1,20 @@
 import numpy as np
 import operator
 from numpy.core.fromnumeric import shape
-from get_playlist_data import get_song_features
+from get_playlist_data import get_song_features, uri_to_playlist
 
-# Static global variables
-FEATURE_WEIGHTS = {'danceability' : 2.2 ,
-                         'energy' : 4 ,
+# static global variables
+FEATURE_WEIGHTS = {'danceability' : 4 ,
+                         'energy' : 2 ,
                             'key' : 0.1 ,
-                       'loudness' : 1.5 ,
+                       'loudness' : 2 ,
                            'mode' : 1 ,
                     'speechiness' : 1 ,
-                   'acousticness' : 1 ,
+                   'acousticness' : 4 ,
                'instrumentalness' : 1 ,
                        'liveness' : 1 ,
-                        'valence' : 4 ,
-                          'tempo' : 3.3
+                        'valence' : 5 ,
+                          'tempo' : 5
                     }
 FEAT_KEYS_SZ = len(FEATURE_WEIGHTS)
 
@@ -50,14 +50,14 @@ def print_tree(trees, nodes) -> None:
 
 # gets list of nodes
 def get_node_list(usr, playlist_no, client_id, client_secret) -> list:
-    features, names = get_song_features(usr, playlist_no, client_id, client_secret)
+    features, names, playlist_name = get_song_features(usr, playlist_no, client_id, client_secret)
     node_lst = []
     for i, feature in enumerate(features):
         val_lst = [feature[k] for k in FEATURE_WEIGHTS.keys()]
         new_node = Node(i, feature['uri'], names[i][0], names[i][1], val_lst)
         node_lst.append(new_node)
 
-    return node_lst
+    return node_lst, playlist_name
 
 
 # applies weight onto the array
@@ -66,6 +66,7 @@ def apply_weight(arr):
     return arr * val_arr
 
 
+# create 2x2 distance matrix of each nodes
 def make_dist_matrix(nodes) -> np.ndarray:
     node_arr = np.array([np.array(nd.vals) for nd in nodes])
     dist_mtx = []
@@ -124,17 +125,13 @@ def make_min_span_tree(nodes, dist_mtx) -> dict:
     return span_tree
 
 
-# perform minimum weight matching on trees
+# perform minimum weight matching onto given nodes
 def minimum_match(tree_branches, trees, odd_mtx, mtx_to_tree_ind) -> list:
     pairs = []
     tree_remains = set(trees)
     while tree_remains:
         oddi1, oddi2 = np.unravel_index(np.argmin(odd_mtx, axis=None), odd_mtx.shape)
         m1, m2 = mtx_to_tree_ind[oddi1], mtx_to_tree_ind[oddi2]
-
-        # print(tree_branches[m1])
-        # print(tree_branches[m2])
-        
         if m1 in tree_branches[m2]:
             odd_mtx[oddi1][oddi2] = float('inf')
             odd_mtx[oddi2][oddi1] = float('inf')
@@ -151,15 +148,13 @@ def minimum_match(tree_branches, trees, odd_mtx, mtx_to_tree_ind) -> list:
     return pairs
 
 
-# build the spanning tree into an Euler graph
+# build Euler graph by pairing nodes of spanning trees with odd number of vertices
 def match_odd_pairs(span_tree, dist_mtx) -> list:
     odd_tree = []
     even_tree = []
     odd_mtx = dist_mtx.copy()
     for tree in span_tree.values():
         if len(tree.branches) % 2 != 0:
-            # print(tree.index)
-            # print([b.index for b in tree.branches])
             odd_tree.append(tree.index)
         else:
             even_tree.append(tree.index)
@@ -168,8 +163,6 @@ def match_odd_pairs(span_tree, dist_mtx) -> list:
     mtx_to_tree_ind = {}
     odd_mtx = np.delete(odd_mtx, even_tree, 0)
     odd_mtx = np.delete(odd_mtx, even_tree, 1)
-
-    # print(odd_tree)
 
     sz = odd_mtx.shape[0]
     for i in range(sz):
@@ -186,7 +179,7 @@ def match_odd_pairs(span_tree, dist_mtx) -> list:
     return span_tree
 
 
-# check if the following graph is a valid euler graph
+# check if the given graph is a valid euler graph
 def check_euler_graph(trees):
     flag = True
     for tree in trees.values():
@@ -197,7 +190,7 @@ def check_euler_graph(trees):
     return flag
 
 
-# implements christofides algorithm using given spanning tree to create appriximate solution
+# implements christofides algorithm using given spanning tree to build approiximate solution
 def tsp_chris(span_tree, dist_mtx) -> list:
     span_tree = match_odd_pairs(span_tree, dist_mtx)
     unvisited_trees = set(span_tree.keys())
@@ -216,7 +209,7 @@ def tsp_chris(span_tree, dist_mtx) -> list:
 
         if uv_len < 1:
             euler_path = cur_path
-            print("wow much success")
+            print("Mix successfully created.")
             break
         
         cur_ind = cur_path[-1]
@@ -241,7 +234,6 @@ def tsp_chris(span_tree, dist_mtx) -> list:
                     new_uv_len -= 1
 
                 stack.append(((new_path, new_path_len), new_visited_paths, (new_unvisited, new_uv_len)))
-        
 
     if euler_path is None:
         return None
@@ -256,28 +248,39 @@ def tsp_chris(span_tree, dist_mtx) -> list:
     return result
 
 
+# build given list of indices into list of uri's
+def path_to_uri(nodes, tsp_path) -> list:
+    node_dict = {node.index : node.uri for node in nodes}
+    uri_list = [node_dict[ind] for ind in tsp_path]
+    return uri_list
+
+
+# build given list of indices into list of track names and artists
+def path_to_name_artist(nodes, tsp_path) -> list:
+    node_dict = {node.index : node.name + "  - " + node.artist for node in nodes}
+    name_artist_list = [node_dict[ind] for ind in tsp_path]
+    return name_artist_list
+
+
+# build a mix for given playlist of given user
 def generate_mix(usr, playlist_no, client_id, client_secret) -> list:
-    nodes = get_node_list(usr, playlist_no, client_id, client_secret)
+    nodes, playlist_name = get_node_list(usr, playlist_no, client_id, client_secret)
     dist_mtx = make_dist_matrix(nodes)
     span_tree = make_min_span_tree(nodes, dist_mtx)
-    result = tsp_chris(span_tree, dist_mtx)
+    tsp_path = tsp_chris(span_tree, dist_mtx)
+    uri_list = path_to_uri(nodes, tsp_path)
+    uri_to_playlist(uri_list, usr, playlist_name)
+    name_artist_list = path_to_name_artist(nodes, tsp_path)
 
-    return result
+    return name_artist_list
 
 
 def main() -> None:
-    usr = ('Please input user id: ')
+    usr = ('Please enter your user id: ')
+    pl_no = ('Please enter number of your playlist: ')
     client_id = input('Enter client id: ')
     client_secret = input('Enter client secret passcode: ')
-    print(generate_mix(usr, client_id, client_secret))
-
-
-def test_dist_mtx(dist_mtx) -> None:
-    a = 70
-    i = 1
-    j = 20
-    print(dist_mtx[a][i] + dist_mtx[i][j])
-    print(dist_mtx[a][j])
+    print(generate_mix(usr, pl_no, client_id, client_secret))
 
 
 if __name__ == "__main__":

@@ -3,6 +3,12 @@ from spotipy.oauth2 import SpotifyOAuth
 from spotipy.oauth2 import SpotifyClientCredentials
 import urllib3
 
+# global variable
+global sp, token
+sp = None
+token = None
+
+
 def get_artists(artists) -> str:
     sz = len(artists)
     if sz < 1:
@@ -21,15 +27,19 @@ def print_playlists(playlists) -> None:
 
 
 # authenticate spotipy api
-def auth_spotify(client_id, client_secret) -> spotipy.Spotify:
-    client_credentials_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
-    sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+def auth_spotify(usr, client_id, client_secret) -> spotipy.Spotify:
+    global sp, token
+    # client_credentials_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+    # sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+    scope = 'playlist-modify-public'
+    token = spotipy.util.prompt_for_user_token(usr, scope, client_id, client_secret, redirect_uri='http://localhost')
+    sp = spotipy.Spotify(auth=token)
     return sp
 
 
 # get features for each song in a playlist
 def get_song_features(usr, playlist_no, client_id, client_secret) -> tuple:
-    sp = auth_spotify(client_id, client_secret)
+    sp = auth_spotify(usr, client_id, client_secret)
     if sp is None:
         return None
 
@@ -40,6 +50,8 @@ def get_song_features(usr, playlist_no, client_id, client_secret) -> tuple:
     cur_playlist_uris = playlists['items'][playlist_no]['uri']
     # for i in range(len(playlists['items'])):
     #     print(playlists['items'][i]['name'])
+
+    playlist_name = playlists['items'][playlist_no]['name']
 
     cur_playlist_raw = sp.playlist(cur_playlist_uris)
 
@@ -52,7 +64,17 @@ def get_song_features(usr, playlist_no, client_id, client_secret) -> tuple:
     # get features for each songs
     features = sp.audio_features(song_uri_lst)
 
-    return features, song_name_lst
+    return features, song_name_lst, playlist_name
+
+
+def uri_to_playlist(uri_list, usr, playlist_name) -> None:
+    global sp
+    if sp is not None:
+        playlist_name += " - roy's mix"
+        new_playlist = sp.user_playlist_create(usr, playlist_name)
+        sp.playlist_add_items(new_playlist['id'], uri_list)
+    else:
+        print("sp failure")
 
 
 def main() -> None:
