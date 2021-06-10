@@ -28,14 +28,14 @@ def auth_spotify(client_id, client_secret):
     sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
 
-def get_song_features(usr, client_id, client_secret) -> tuple:
+def get_song_features(usr, playlist_no, client_id, client_secret) -> tuple:
     auth_spotify(client_id, client_secret)
 
     # Get a list of all playlists from usr
     playlists = sp.user_playlists(usr)
 
     # Get a single playlist
-    cur_playlist_uris = playlists['items'][6]['uri']
+    cur_playlist_uris = playlists['items'][playlist_no]['uri']
     # for i in range(len(playlists['items'])):
     #     print(playlists['items'][i]['name'])
 
