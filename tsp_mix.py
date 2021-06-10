@@ -4,11 +4,19 @@ from numpy.core.fromnumeric import shape
 from get_playlist_data import get_song_features
 
 # Static global variables
-FEATURE_KEYS = ['danceability', 'energy', 'key', 'loudness', 'mode', 'speechiness',
-                'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo']
-FEAT_KEYS_SZ = len(FEATURE_KEYS)
-FEATURE_WEIGHTS = [2.2, 4, 0.1, 1.5, 1, 1,
-                   1, 1, 1, 4, 3.3]
+FEATURE_WEIGHTS = {'danceability' : 2.2 ,
+                         'energy' : 4 ,
+                            'key' : 0.1 ,
+                       'loudness' : 1.5 ,
+                           'mode' : 1 ,
+                    'speechiness' : 1 ,
+                   'acousticness' : 1 ,
+               'instrumentalness' : 1 ,
+                       'liveness' : 1 ,
+                        'valence' : 4 ,
+                          'tempo' : 3.3
+                    }
+FEAT_KEYS_SZ = len(FEATURE_WEIGHTS)
 
 class Node:
     def __init__(self, index, uri, name, artist, val_lst=[]) -> None:
@@ -17,7 +25,6 @@ class Node:
         self.name = name
         self.artist = artist
         self.vals = val_lst
-
 
 class Tree:
     def __init__(self, index):
@@ -42,11 +49,11 @@ def print_tree(trees, nodes) -> None:
 
 
 # gets list of nodes
-def get_node_list(usr, client_id, client_secret) -> list:
-    features, names = get_song_features(usr, client_id, client_secret)
+def get_node_list(usr, playlist_no, client_id, client_secret) -> list:
+    features, names = get_song_features(usr, playlist_no, client_id, client_secret)
     node_lst = []
     for i, feature in enumerate(features):
-        val_lst = [feature[k] for k in FEATURE_KEYS]
+        val_lst = [feature[k] for k in FEATURE_WEIGHTS.keys()]
         new_node = Node(i, feature['uri'], names[i][0], names[i][1], val_lst)
         node_lst.append(new_node)
 
@@ -55,7 +62,7 @@ def get_node_list(usr, client_id, client_secret) -> list:
 
 # applies weight onto the array
 def apply_weight(arr):
-    val_arr = np.tile(np.array(FEATURE_WEIGHTS), (arr.shape[0], 1))
+    val_arr = np.tile(np.array(list(FEATURE_WEIGHTS.values())), (arr.shape[0], 1))
     return arr * val_arr
 
 
@@ -78,14 +85,15 @@ def make_dist_matrix(nodes) -> np.ndarray:
 
 # implements prim's algorithm to create minimum spanning tree
 def make_min_span_tree(nodes, dist_mtx) -> dict:
-    copy_mtx = np.copy(dist_mtx)
-    index_nodes = {nd.index : nd for nd in nodes}
     nodes_undone = list(range(len(nodes)))
     init_node = nodes_undone.pop(0)
     nodes_undone = set(nodes_undone)
     nodes_done = set([init_node])
+
+    copy_mtx = np.copy(dist_mtx)
     copy_mtx[:, init_node] = np.full(copy_mtx.shape[0], float('inf')).T
 
+    prob = 0
     span_tree = {}
     while nodes_undone:
         min_val = float('inf')
@@ -94,89 +102,184 @@ def make_min_span_tree(nodes, dist_mtx) -> dict:
         # find the minimum branch to take from the current tree
         for cur_index in nodes_done:
             cur_dist_arr = copy_mtx[cur_index]
-            # if cur_dist_arr[cur_index] == 0:
-            #     cur_dist_arr[cur_index] = float('inf')
-            
             min_index = np.argmin(cur_dist_arr)
-            if cur_dist_arr[min_index] < min_val:
+            if cur_dist_arr[min_index] <= min_val:
                 min_pair = (cur_index, min_index)
                 min_val = cur_dist_arr[min_index]
 
-        start_node = index_nodes[min_pair[0]]
-        end_node = index_nodes[min_pair[1]]
-
         # add minimum findings to span_tree
-        start_tree = Tree(start_node.index)
-        end_tree = Tree(end_node.index)
-        if start_node.index not in span_tree:
-            span_tree[start_node.index] = start_tree
-        span_tree[start_node.index].add(end_tree)
+        if min_pair[0] not in span_tree:
+            span_tree[min_pair[0]] = Tree(min_pair[0])
             
-        if end_node.index not in span_tree:
-            span_tree[end_node.index] = end_tree
-        span_tree[end_node.index].add(start_tree)
+        if min_pair[1] not in span_tree:
+            span_tree[min_pair[1]] = Tree(min_pair[1])
+        
+        span_tree[min_pair[0]].add(span_tree[min_pair[1]])
+        span_tree[min_pair[1]].add(span_tree[min_pair[0]])
 
-        copy_mtx[:, end_node.index] = np.full(copy_mtx.shape[0], float('inf')).T
-        nodes_undone.remove(end_node.index)
-        nodes_done.add(end_node.index)
+        copy_mtx[:, min_pair[1]] = np.full(copy_mtx.shape[0], float('inf')).T
+        nodes_undone.remove(min_pair[1])
+        nodes_done.add(min_pair[1])
     
     return span_tree
 
 
-def perfect_match(trees, odd_mtx) -> np.ndarray:
-    tree_remains = set(trees)
+# perform minimum weight matching on trees
+def minimum_match(tree_branches, trees, odd_mtx, mtx_to_tree_ind) -> list:
     pairs = []
-    print(odd_mtx[13][27])
-    # print(min(odd_mtx))
-    '''
+    tree_remains = set(trees)
     while tree_remains:
-        cur_ind = np.unravel_index(np.argmin(odd_mtx, axis=None), odd_mtx.shape)
-        odd_mtx[cur_ind[0]] = np.full(odd_mtx.shape[0], float('inf'))
-        odd_mtx[:, cur_ind[0]] = np.full(odd_mtx.shape[0], float('inf')).T
-        odd_mtx[cur_ind[1]] = np.full(odd_mtx.shape[0], float('inf'))
-        odd_mtx[:, cur_ind[1]] = np.full(odd_mtx.shape[0], float('inf')).T
-        print(odd_mtx[cur_ind])
-        print(odd_mtx[:, cur_ind])
-        tree_remains.remove(cur_ind[0])
-        tree_remains.remove(cur_ind[1])
-    '''
-    
+        oddi1, oddi2 = np.unravel_index(np.argmin(odd_mtx, axis=None), odd_mtx.shape)
+        m1, m2 = mtx_to_tree_ind[oddi1], mtx_to_tree_ind[oddi2]
+
+        # print(tree_branches[m1])
+        # print(tree_branches[m2])
+        
+        if m1 in tree_branches[m2]:
+            odd_mtx[oddi1][oddi2] = float('inf')
+            odd_mtx[oddi2][oddi1] = float('inf')
+        else:
+            odd_mtx[oddi1] = np.full(odd_mtx.shape[0], float('inf'))
+            odd_mtx[:, oddi1] = np.full(odd_mtx.shape[1], float('inf')).T
+            odd_mtx[oddi2] = np.full(odd_mtx.shape[0], float('inf'))
+            odd_mtx[:, oddi2] = np.full(odd_mtx.shape[1], float('inf')).T
+            
+            pairs.append((mtx_to_tree_ind[oddi1], mtx_to_tree_ind[oddi2]))
+            tree_remains.remove(mtx_to_tree_ind[oddi1])
+            tree_remains.remove(mtx_to_tree_ind[oddi2])
+
     return pairs
 
 
-def match_odd_pairs(span_tree, dist_mtx) -> np.ndarray:
+# build the spanning tree into an Euler graph
+def match_odd_pairs(span_tree, dist_mtx) -> list:
     odd_tree = []
-    # odd_mtx = dist_mtx.copy()
-    odd_mtx = {}
-    for i in range(dist_mtx.shape[0]):
-        tree = span_tree[i]
-        if len(tree.branches) % 2 == 1:
+    even_tree = []
+    odd_mtx = dist_mtx.copy()
+    for tree in span_tree.values():
+        if len(tree.branches) % 2 != 0:
+            # print(tree.index)
+            # print([b.index for b in tree.branches])
             odd_tree.append(tree.index)
+        else:
+            even_tree.append(tree.index)
     
-    for i in odd_tree:
-        odd_mtx[i] = {j : dist_mtx[i][j] for j in odd_tree}
+    odd_tree.sort()
+    mtx_to_tree_ind = {}
+    odd_mtx = np.delete(odd_mtx, even_tree, 0)
+    odd_mtx = np.delete(odd_mtx, even_tree, 1)
 
-    matched_pairs = perfect_match(odd_tree, odd_mtx)
+    # print(odd_tree)
 
-    return matched_pairs
+    sz = odd_mtx.shape[0]
+    for i in range(sz):
+        mtx_to_tree_ind[i] = odd_tree[i]
+
+    # TODO: get rid of pairs that are already linked together
+    tree_branches = {ind : set([b.index for b in tree.branches]) for ind, tree in span_tree.items()}
+    matched_pairs = minimum_match(tree_branches, odd_tree, odd_mtx, mtx_to_tree_ind)
+
+    for pair in matched_pairs:
+        span_tree[pair[0]].add(span_tree[pair[1]])
+        span_tree[pair[1]].add(span_tree[pair[0]])
+        # print(len(span_tree[pair[0]].branches))
+        # print(len(span_tree[pair[1]].branches))
+
+    return span_tree
+
+
+# check if the following graph is a valid euler graph
+def check_euler_graph(trees):
+    flag = True
+    for tree in trees.values():
+        if len(tree.branches) % 2 != 0:
+            print("NOT EULER: {}".format(tree.index))
+            flag = False
+    
+    return flag
 
 
 # implements christofides algorithm using given spanning tree to create appriximate solution
 def tsp_chris(span_tree, dist_mtx) -> list:
-    ## TODO: Use christofides algorithm based on the spanning tree
-    euler_tree = match_odd_pairs(span_tree, dist_mtx)
+    span_tree = match_odd_pairs(span_tree, dist_mtx)
+    unvisited_trees = set(span_tree.keys())
+    start_tree = unvisited_trees.pop()
+    euler_path = None
 
-    return span_tree
+    if not check_euler_graph(span_tree):
+        return None
+
+    # traverse the euler graph using DFS to create eulerean path
+    stack = [(([start_tree], 1), set([]), (unvisited_trees, len(unvisited_trees)))]
+    while stack:
+        cur_path_tp, visited_paths, unvisited_tp = stack.pop()
+        cur_path, cp_len = cur_path_tp
+        unvisited, uv_len = unvisited_tp
+
+        if uv_len < 1:
+            euler_path = cur_path
+            print("wow much success")
+            break
+        
+        cur_ind = cur_path[-1]
+
+        # print('cur_ind: {}'.format(cur_ind))
+
+        next_trees = list(span_tree[cur_ind].branches)
+        for next_tree in next_trees:
+            next_ind = next_tree.index
+            new_edge = (cur_ind, next_ind)
+
+            # print('  next_ind: {}'.format(next_ind))
+            # print('  new_edge: {}'.format(new_edge))
+            # print("  cur_path: {}".format(cur_path))
+            # print("  visited_paths: {}".format(visited_paths))
+
+            if cp_len < 2 or (next_ind != cur_path[-2] and new_edge not in visited_paths):
+                new_path = cur_path.copy()
+                new_path_len = cp_len
+                new_visited_paths = visited_paths.copy()
+                new_unvisited = unvisited.copy()
+                new_uv_len = uv_len
+
+                new_path.append(next_ind)
+                new_path_len += 1
+                new_visited_paths.add(new_edge)
+                if next_ind in new_unvisited:
+                    new_unvisited.remove(next_ind)
+                    new_uv_len -= 1
+
+                # print("    new_path: {}".format(new_path))
+                # print("    new visited_paths: {}".format(new_visited_paths))
+
+                stack.append(((new_path, new_path_len), new_visited_paths, (new_unvisited, new_uv_len)))
+            
+        #     print("")
+        
+        # print("")
+        # print("")
+
+    if euler_path is None:
+        return None
+
+    # TODO: remove duplicates from euler path
+    result = []
+    visited = set([])
+    for n in euler_path:
+        if n not in visited:
+            visited.add(n)
+            result.append(n)   
+
+    return result
 
 
-def generate_mix(usr, client_id, client_secret) -> list:
-    nodes = get_node_list(usr, client_id, client_secret)
+def generate_mix(usr, playlist_no, client_id, client_secret) -> list:
+    nodes = get_node_list(usr, playlist_no, client_id, client_secret)
     dist_mtx = make_dist_matrix(nodes)
     span_tree = make_min_span_tree(nodes, dist_mtx)
     result = tsp_chris(span_tree, dist_mtx)
-    # return result
-    # print_tree(span_tree, nodes)
-    return []
+
+    return result
 
 
 def main() -> None:

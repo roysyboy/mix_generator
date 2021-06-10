@@ -3,9 +3,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from spotipy.oauth2 import SpotifyClientCredentials
 import urllib3
 
-sp = None
-
-def get_artists(artists):
+def get_artists(artists) -> str:
     sz = len(artists)
     if sz < 1:
         return None
@@ -22,14 +20,18 @@ def print_playlists(playlists) -> None:
         print("    " + playlist['uri'])
 
 
-def auth_spotify(client_id, client_secret):
-    global sp
+# authenticate spotipy api
+def auth_spotify(client_id, client_secret) -> spotipy.Spotify:
     client_credentials_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
     sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+    return sp
 
 
+# get features for each song in a playlist
 def get_song_features(usr, playlist_no, client_id, client_secret) -> tuple:
-    auth_spotify(client_id, client_secret)
+    sp = auth_spotify(client_id, client_secret)
+    if sp is None:
+        return None
 
     # Get a list of all playlists from usr
     playlists = sp.user_playlists(usr)
@@ -45,8 +47,6 @@ def get_song_features(usr, playlist_no, client_id, client_secret) -> tuple:
     cur_pl_sz = len(cur_pl)
 
     song_uri_lst = [cur_pl[i]['track']['uri'] for i in range(cur_pl_sz)]
-    # song_name_lst = [(cur_pl[i]['track']['name'], cur_pl[i]['track']['artists'][0]['name']) for i in range(cur_pl_sz)]
-
     song_name_lst = [(cur_pl[i]['track']['name'], get_artists(cur_pl[i]['track']['artists'])) for i in range(cur_pl_sz)]
 
     # get features for each songs
@@ -57,6 +57,7 @@ def get_song_features(usr, playlist_no, client_id, client_secret) -> tuple:
 
 def main() -> None:
     usr = input('Enter Spotify user id: ')
+    playlist_no = input('Enter the playlist number: ')
     client_id = input('Enter client id: ')
     client_secret = input('Enter client secret passcode: ')
     
