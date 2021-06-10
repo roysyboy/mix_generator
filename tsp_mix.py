@@ -182,8 +182,6 @@ def match_odd_pairs(span_tree, dist_mtx) -> list:
     for pair in matched_pairs:
         span_tree[pair[0]].add(span_tree[pair[1]])
         span_tree[pair[1]].add(span_tree[pair[0]])
-        # print(len(span_tree[pair[0]].branches))
-        # print(len(span_tree[pair[1]].branches))
 
     return span_tree
 
@@ -223,17 +221,10 @@ def tsp_chris(span_tree, dist_mtx) -> list:
         
         cur_ind = cur_path[-1]
 
-        # print('cur_ind: {}'.format(cur_ind))
-
         next_trees = list(span_tree[cur_ind].branches)
         for next_tree in next_trees:
             next_ind = next_tree.index
             new_edge = (cur_ind, next_ind)
-
-            # print('  next_ind: {}'.format(next_ind))
-            # print('  new_edge: {}'.format(new_edge))
-            # print("  cur_path: {}".format(cur_path))
-            # print("  visited_paths: {}".format(visited_paths))
 
             if cp_len < 2 or (next_ind != cur_path[-2] and new_edge not in visited_paths):
                 new_path = cur_path.copy()
@@ -249,20 +240,12 @@ def tsp_chris(span_tree, dist_mtx) -> list:
                     new_unvisited.remove(next_ind)
                     new_uv_len -= 1
 
-                # print("    new_path: {}".format(new_path))
-                # print("    new visited_paths: {}".format(new_visited_paths))
-
                 stack.append(((new_path, new_path_len), new_visited_paths, (new_unvisited, new_uv_len)))
-            
-        #     print("")
         
-        # print("")
-        # print("")
 
     if euler_path is None:
         return None
 
-    # TODO: remove duplicates from euler path
     result = []
     visited = set([])
     for n in euler_path:
