@@ -7,12 +7,12 @@ from get_playlist_data import get_song_features, uri_to_playlist
 FEATURE_WEIGHTS = {'danceability' : 4 ,
                          'energy' : 2 ,
                             'key' : 0.1 ,
-                       'loudness' : 2 ,
+                       'loudness' : 1 ,
                            'mode' : 1 ,
-                    'speechiness' : 1 ,
+                    'speechiness' : 3 ,
                    'acousticness' : 4 ,
-               'instrumentalness' : 1 ,
-                       'liveness' : 1 ,
+               'instrumentalness' : 3 ,
+                       'liveness' : 0.5 ,
                         'valence' : 5 ,
                           'tempo' : 5
                     }
@@ -72,8 +72,7 @@ def make_dist_matrix(nodes) -> np.ndarray:
     dist_mtx = []
     for vals in node_arr:
         val_arr = np.tile(np.array(vals), (node_arr.shape[0], 1))
-        res_arr = np.absolute(node_arr - val_arr)
-        res_arr = apply_weight(res_arr)
+        res_arr = apply_weight(np.absolute(node_arr - val_arr))
         res = np.sum(res_arr, axis=1)
         dist_mtx.append(res)
     
