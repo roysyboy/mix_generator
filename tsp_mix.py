@@ -155,6 +155,8 @@ def match_odd_pairs(span_tree, dist_mtx) -> list:
     odd_tree = []
     even_tree = []
     odd_mtx = dist_mtx.copy()
+
+    # filter out nodes with degree of odd and even numbers
     for tree in span_tree.values():
         if len(tree.branches) % 2 != 0:
             odd_tree.append(tree.index)
@@ -163,6 +165,8 @@ def match_odd_pairs(span_tree, dist_mtx) -> list:
     
     odd_tree.sort()
     mtx_to_tree_ind = {}
+
+    # create distance matrix only containing nodes with degree of odd number 
     odd_mtx = np.delete(odd_mtx, even_tree, 0)
     odd_mtx = np.delete(odd_mtx, even_tree, 1)
 
@@ -173,6 +177,7 @@ def match_odd_pairs(span_tree, dist_mtx) -> list:
     tree_branches = {ind : set([b.index for b in tree.branches]) for ind, tree in span_tree.items()}
     matched_pairs = minimum_match(tree_branches, odd_tree, odd_mtx, mtx_to_tree_ind)
 
+    # add newly paired nodes to the tree
     for pair in matched_pairs:
         span_tree[pair[0]].add(span_tree[pair[1]])
         span_tree[pair[1]].add(span_tree[pair[0]])
@@ -201,7 +206,7 @@ def tsp_chris(span_tree, dist_mtx) -> list:
     if not check_euler_graph(span_tree):
         return None
 
-    # traverse the euler graph using DFS to create eulerean path
+    # traverse the euler graph via DFS to create eulerean path
     stack = [(([start_tree], 1), set([]), (unvisited_trees, len(unvisited_trees)))]
     while stack:
         cur_path_tp, visited_paths, unvisited_tp = stack.pop()
@@ -273,7 +278,7 @@ def print_playlist(name_artist_list) -> None:
         print("{}. {}".format(i + 1, track))
 
 
-### MAIN ###
+##### MAIN #####
 # build a mix for given playlist of given user
 def generate_mix(usr, playlist_no, client_id, client_secret) -> list:
     
