@@ -4,7 +4,7 @@ from numpy.core.fromnumeric import shape
 from get_playlist_data import get_song_features, uri_to_playlist
 
 # static global variables
-FEATURE_WEIGHTS = {'danceability' : 20 ,   # [0, 1]
+FEATURE_WEIGHTS = {'danceability' : 15 ,   # [0, 1]
                          'energy' : 10 ,     # [0, 1]
                             'key' : 0 ,
                        'loudness' : 5 ,     # (-60, 0)
@@ -14,7 +14,7 @@ FEATURE_WEIGHTS = {'danceability' : 20 ,   # [0, 1]
                'instrumentalness' : 8 ,     # [0, 1]
                        'liveness' : 0.5 ,   # [0, 1]
                         'valence' : 10 ,   # [0, 1]
-                          'tempo' : 10       # BPM
+                          'tempo' : 15       # BPM
                     }
 FEAT_KEYS_SZ = len(FEATURE_WEIGHTS)
 
