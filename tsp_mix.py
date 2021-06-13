@@ -277,7 +277,7 @@ def print_playlist(name_artist_list) -> None:
         print("{}. {}".format(i + 1, track))
 
 
-##### MAIN #####
+##### mix generator function #####
 # build a mix for given playlist of given user
 def generate_mix(usr, playlist_no, client_id, client_secret) -> list:
     
@@ -299,6 +299,7 @@ def generate_mix(usr, playlist_no, client_id, client_secret) -> list:
     return name_artist_list
 
 
+##### main #####
 def main() -> None:
     usr = ('Please enter your user id: ')
     pl_no = ('Please enter number of your playlist: ')
