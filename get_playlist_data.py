@@ -21,12 +21,25 @@ def get_artists(artists) -> str:
     return result
 
 
-# print out ecah track from given spotify playlist
+# print out each track from given spotify playlist
 def print_playlists(playlists) -> None:
     for i, playlist in enumerate(playlists['items']):
-        print('{}:'.format(i))
-        print("    " + playlist['name'])
-        print("    " + playlist['uri'])
+        print('{}: {}'.format(i + 1, playlist['name']))
+        # print("    " + playlist['name'])
+        # print("    " + playlist['uri'])
+
+
+# get a list of all playlist of user profile
+def get_playlist(usr, client_id, client_secret):
+    global sp
+    sp = auth_spotify(usr, client_id, client_secret)
+    if sp is None:
+        return None
+    
+    playlists = sp.user_playlists(usr)
+    print_playlists(playlists)
+
+    return playlists
 
 
 # authenticate spotify's web api
@@ -41,13 +54,14 @@ def auth_spotify(usr, client_id, client_secret) -> spotipy.Spotify:
 
 
 # get features for each song in a playlist
-def get_song_features(usr, playlist_no, client_id, client_secret) -> tuple:
-    sp = auth_spotify(usr, client_id, client_secret)
+def get_song_features(usr, playlists, playlist_no, client_id, client_secret) -> tuple:
+    global sp
+    # sp = auth_spotify(usr, client_id, client_secret)
     if sp is None:
         return None
 
     # Get a list of all playlists from usr
-    playlists = sp.user_playlists(usr)
+    playlist_no -= 1
 
     # Get a single playlist
     cur_playlist_uris = playlists['items'][playlist_no]['uri']
@@ -80,11 +94,12 @@ def uri_to_playlist(uri_list, usr, playlist_name) -> None:
 ##### main #####
 def main() -> None:
     usr = input('Enter Spotify user id: ')
-    playlist_no = input('Enter the playlist number: ')
     client_id = input('Enter client id: ')
     client_secret = input('Enter client secret passcode: ')
     
-    features, names = get_song_features(usr, client_id, client_secret)
+    playlists = get_playlist(usr, client_id, client_secret)
+    playlist_no = input('Enter the playlist number: ')
+    features, names = get_song_features(usr, playlists, client_id, client_secret)
     for i, feature in enumerate(features):
         print("{}: ".format(i))
         print("  {}".format(names[i]))

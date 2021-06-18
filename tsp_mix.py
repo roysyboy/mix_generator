@@ -1,7 +1,7 @@
 import numpy as np
 import operator
 from numpy.core.fromnumeric import shape
-from get_playlist_data import get_song_features, uri_to_playlist
+from get_playlist_data import get_song_features, uri_to_playlist, get_playlist
 
 # static global variables
 FEATURE_WEIGHTS = {'danceability' : 15 ,    # [0, 1]
@@ -279,7 +279,7 @@ def print_playlist(name_artist_list) -> None:
 
 ##### mix generator function #####
 # build a mix for given playlist of given user
-def generate_mix(usr, playlist_no, client_id, client_secret) -> list:
+def generate_mix(usr, playlists, playlist_no, client_id, client_secret) -> list:
     
     # get playlist as a list of nodes and generate distance matrix between each node
     nodes, playlist_name = get_node_list(usr, playlist_no, client_id, client_secret)
@@ -302,10 +302,15 @@ def generate_mix(usr, playlist_no, client_id, client_secret) -> list:
 ##### main #####
 def main() -> None:
     usr = ('Please enter your user id: ')
-    pl_no = ('Please enter number of your playlist: ')
     client_id = input('Enter client id: ')
     client_secret = input('Enter client secret passcode: ')
-    name_artist_list = generate_mix(usr, pl_no, client_id, client_secret)
+    playlists = get_playlist(usr, client_id, client_secret)
+    pl_len = len(playlists)
+    pl_no = ('Please enter number of your playlist: ')
+    while pl_no < 1 or pl_no > pl_len:
+        pl_no = ('Please enter number of your playlist: ')
+        
+    name_artist_list = generate_mix(usr, playlists, pl_no, client_id, client_secret)
     print_playlist(name_artist_list)
 
 
