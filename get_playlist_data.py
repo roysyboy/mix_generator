@@ -96,10 +96,13 @@ def main() -> None:
     usr = input('Enter Spotify user id: ')
     client_id = input('Enter client id: ')
     client_secret = input('Enter client secret passcode: ')
-    
     playlists = get_playlist(usr, client_id, client_secret)
     playlist_no = input('Enter the playlist number: ')
-    features, names = get_song_features(usr, playlists, client_id, client_secret)
+    pl_len = len(playlists)
+    while not playlist_no.isdigit() or (int(playlist_no) < 1 or int(playlist_no) > pl_len):
+        playlist_no = ('Please enter number of your playlist: ')
+
+    features, names = get_song_features(usr, int(playlist_no), playlists, client_id, client_secret)
     for i, feature in enumerate(features):
         print("{}: ".format(i))
         print("  {}".format(names[i]))

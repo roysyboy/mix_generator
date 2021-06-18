@@ -305,12 +305,12 @@ def main() -> None:
     client_id = input('Enter client id: ')
     client_secret = input('Enter client secret passcode: ')
     playlists = get_playlist(usr, client_id, client_secret)
-    pl_len = len(playlists)
     pl_no = ('Please enter number of your playlist: ')
-    while pl_no < 1 or pl_no > pl_len:
+    pl_len = len(playlists)
+    while pl_no.isdigit() or (int(pl_no) < 1 or int(pl_no) > pl_len):
         pl_no = ('Please enter number of your playlist: ')
-        
-    name_artist_list = generate_mix(usr, playlists, pl_no, client_id, client_secret)
+
+    name_artist_list = generate_mix(usr, playlists, int(pl_no), client_id, client_secret)
     print_playlist(name_artist_list)
 
 
